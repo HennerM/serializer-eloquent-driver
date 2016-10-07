@@ -99,13 +99,12 @@ class Driver extends Serializer
             $value,
             get_class($value),
             new ReflectionClass($value),
-            $this
+            $this,
+            3
         );
-
         if (!empty($methods)) {
             $data = array_merge($data, $methods);
         }
-
         return $data;
     }
 }

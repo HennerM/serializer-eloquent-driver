@@ -57,15 +57,17 @@ class RelationshipPropertyExtractor
      * @param $value
      * @param $className
      * @param ReflectionClass $reflection
-     * @param Driver          $serializer
+     * @param Driver $serializer
      *
+     * @param $depth
      * @return array
      */
     public static function getRelationshipAsPropertyName(
         $value,
         $className,
         ReflectionClass $reflection,
-        Driver $serializer
+        Driver $serializer,
+        $depth
     ) {
         $methods = [];
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
@@ -95,7 +97,7 @@ class RelationshipPropertyExtractor
 
                     foreach ($relationData as $model) {
                         if ($model instanceof Model) {
-                            $items[] = self::getModelData($serializer, $model);
+                            $items[] = self::getModelData($serializer, $model, $depth-1);
                         }
                     }
 
@@ -105,7 +107,7 @@ class RelationshipPropertyExtractor
                     ];
                 } elseif ($relationData instanceof Model) {
                     //Single element returned.
-                    $methods[$name] = self::getModelData($serializer, $relationData);
+                    $methods[$name] = self::getModelData($serializer, $relationData, $depth-1);
                 }
 
             } catch (ErrorException $e) {
@@ -141,12 +143,27 @@ class RelationshipPropertyExtractor
      *
      * @return array
      */
-    protected static function getModelData(Driver $serializer, Model $model)
+    protected static function getModelData(Driver $serializer, Model $model, $depth)
     {
+
+
         $stdClass = (object) $model->attributesToArray();
         $data = $serializer->serialize($stdClass);
         $data[Serializer::CLASS_IDENTIFIER_KEY] = get_class($model);
 
+        $methods = [];
+        if ($depth > 0) {
+            $methods = RelationshipPropertyExtractor::getRelationshipAsPropertyName(
+                $model,
+                get_class($model),
+                new ReflectionClass($model),
+                $serializer,
+                $depth
+            );
+        }
+        if (!empty($methods)) {
+            $data = array_merge($data, $methods);
+        }
         return $data;
     }
 }
