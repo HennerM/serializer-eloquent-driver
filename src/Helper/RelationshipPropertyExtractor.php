@@ -53,6 +53,8 @@ class RelationshipPropertyExtractor
         '__wakeup',
     ];
 
+    public static $objectHashes = [];
+
     /**
      * @param $value
      * @param $className
@@ -66,8 +68,7 @@ class RelationshipPropertyExtractor
         $value,
         $className,
         ReflectionClass $reflection,
-        Driver $serializer,
-        $depth
+        Driver $serializer
     ) {
         $methods = [];
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
@@ -97,7 +98,7 @@ class RelationshipPropertyExtractor
 
                     foreach ($relationData as $model) {
                         if ($model instanceof Model) {
-                            $items[] = self::getModelData($serializer, $model, $depth-1);
+                            $items[] = self::getModelData($serializer, $model);
                         }
                     }
 
@@ -106,8 +107,7 @@ class RelationshipPropertyExtractor
                         Serializer::SCALAR_VALUE => $items,
                     ];
                 } elseif ($relationData instanceof Model) {
-                    //Single element returned.
-                    $methods[$name] = self::getModelData($serializer, $relationData, $depth-1);
+                    $methods[$name] = self::getModelData($serializer, $relationData);
                 }
 
             } catch (ErrorException $e) {
@@ -143,22 +143,22 @@ class RelationshipPropertyExtractor
      *
      * @return array
      */
-    protected static function getModelData(Driver $serializer, Model $model, $depth)
+    protected static function getModelData(Driver $serializer, Model $model)
     {
-
 
         $stdClass = (object) $model->attributesToArray();
         $data = $serializer->serialize($stdClass);
         $data[Serializer::CLASS_IDENTIFIER_KEY] = get_class($model);
 
         $methods = [];
-        if ($depth > 0) {
+        $hash = sha1($model->getKey().get_class($model));
+        if (!array_key_exists($hash, self::$objectHashes)) {
+            self::$objectHashes[sha1($model->getKey().get_class($model))] = true;
             $methods = RelationshipPropertyExtractor::getRelationshipAsPropertyName(
                 $model,
                 get_class($model),
                 new ReflectionClass($model),
-                $serializer,
-                $depth
+                $serializer
             );
         }
         if (!empty($methods)) {
