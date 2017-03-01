@@ -10,8 +10,7 @@ use ReflectionClass;
 use ReflectionMethod;
 use Traversable;
 
-class RelationshipPropertyExtractor
-{
+class RelationshipPropertyExtractor {
     /**
      * @var array
      */
@@ -145,24 +144,23 @@ class RelationshipPropertyExtractor
      */
     protected static function getModelData(Driver $serializer, Model $model)
     {
-
-        $stdClass = (object) $model->attributesToArray();
-        $data = $serializer->serialize($stdClass);
-        $data[Serializer::CLASS_IDENTIFIER_KEY] = get_class($model);
-
-        $methods = [];
-        $hash = sha1($model->getKey().get_class($model));
+        $data = [];
+        $hash = sha1($model->getKey() . get_class($model));
         if (!array_key_exists($hash, self::$objectHashes)) {
-            self::$objectHashes[sha1($model->getKey().get_class($model))] = true;
+            $stdClass = (object)$model->attributesToArray();
+            $data = $serializer->serialize($stdClass);
+            $data[Serializer::CLASS_IDENTIFIER_KEY] = get_class($model);
+            $methods = [];
+            self::$objectHashes[sha1($model->getKey() . get_class($model))] = true;
             $methods = RelationshipPropertyExtractor::getRelationshipAsPropertyName(
                 $model,
                 get_class($model),
                 new ReflectionClass($model),
                 $serializer
             );
-        }
-        if (!empty($methods)) {
-            $data = array_merge($data, $methods);
+            if (!empty($methods)) {
+                $data = array_merge($data, $methods);
+            }
         }
         return $data;
     }
